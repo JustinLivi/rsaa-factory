@@ -1,5 +1,6 @@
 module.exports = {
+  automock: false,
   preset: 'ts-jest',
   testEnvironment: 'node',
-  setupTestFrameworkScriptFile: 'jest-extended'
+  setupFilesAfterEnv: ['./setupJest.ts', 'jest-extended']
 };

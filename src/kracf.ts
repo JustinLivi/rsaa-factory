@@ -1,23 +1,25 @@
-import immer, { Draft } from 'immer';
-import { get, mapValues, reduce } from 'lodash';
-import { Action } from 'redux';
+import { reduce } from 'lodash';
 import {
   ApiError,
-  Credentials,
   HttpMethod,
   ReduxStandardApiCallingAction,
   ReduxStandardApiCallingActionBody,
   RSAA,
-  RsaaHeaders,
 } from 'redux-api-middleware';
+import resolveUrl from 'resolve-url';
 
-import {
-  BaseRsaaAction,
-  BaseRsaaMeta,
-  IRsaaCreatorMapper,
-  RsaaActionCreatorFactory,
-  RsaaMeta,
-} from './rsaaActionCreatorFactory';
+import { IRsaaCreatorMapper, RsaaMeta } from './baseFactory';
+
+export interface BaseRsaaMeta {
+  method: HttpMethod;
+  endpoint: any;
+  params?: object;
+  body?: object;
+}
+
+export interface BaseRsaaAction {
+  meta: BaseRsaaMeta;
+}
 
 export enum RsaaActionType {
   RSAA_REQUEST = 'RSAA_REQUEST',
@@ -68,7 +70,7 @@ export type RsaaActionSet<
   | RsaaSuccessAction<Meta, SuccessPayload, Method, Endpoint>
   | RsaaFailureAction<Meta, FailurePayload, Method, Endpoint>;
 
-type AnyRsaaActionSet = RsaaActionSet<any, any, any>;
+export type AnyRsaaActionSet = RsaaActionSet<any, any, any>;
 
 export type ExtractRequestAction<
   A extends AnyRsaaActionSet
@@ -98,211 +100,94 @@ export type ExtractFailureAction<
     >
   : never;
 
-export type KeyableRequestReducerMethod<
-  State,
-  RequestAction extends AnyRsaaActionSet
-> = (
-  state: Draft<State>,
-  action: ExtractRequestAction<RequestAction>
-) => void | State;
+export type KeyableRsaaActionType<Params extends BaseRsaaMeta> = [
+  {
+    meta: Params;
+    type: RsaaActionType.RSAA_REQUEST;
+  },
+  {
+    meta: Params;
+    type: RsaaActionType.RSAA_SUCCESS;
+  },
+  {
+    meta: Params;
+    type: RsaaActionType.RSAA_FAILURE;
+  }
+];
 
-export type KeyableSuccessReducerMethod<
-  State,
-  SuccessAction extends AnyRsaaActionSet
-> = (
-  state: Draft<State>,
-  action: ExtractSuccessAction<SuccessAction>
-) => void | State;
-
-export type KeyableFailureReducerMethod<
-  State,
-  FailureAction extends AnyRsaaActionSet
-> = (
-  state: Draft<State>,
-  action: ExtractFailureAction<FailureAction>
-) => void | State;
-
-export interface KeyableRequestReducer<
-  State,
-  RequestAction extends AnyRsaaActionSet
-> {
-  type: RsaaActionType.RSAA_REQUEST;
-  endpoint: RequestAction['meta']['endpoint'];
-  method: RequestAction['meta']['method'];
-  reducer: KeyableRequestReducerMethod<State, RequestAction>;
+export interface KeyableRsaaActionBody<Params extends BaseRsaaMeta>
+  extends ReduxStandardApiCallingActionBody {
+  types: KeyableRsaaActionType<Params>;
 }
-
-export interface KeyableSuccessReducer<
-  State,
-  SuccessAction extends AnyRsaaActionSet
-> {
-  type: RsaaActionType.RSAA_SUCCESS;
-  endpoint: SuccessAction['meta']['endpoint'];
-  method: SuccessAction['meta']['method'];
-  reducer: KeyableSuccessReducerMethod<State, SuccessAction>;
-}
-
-export interface KeyableFailureReducer<
-  State,
-  FailureAction extends AnyRsaaActionSet
-> {
-  type: RsaaActionType.RSAA_FAILURE;
-  endpoint: FailureAction['meta']['endpoint'];
-  method: FailureAction['meta']['method'];
-  reducer: KeyableFailureReducerMethod<State, FailureAction>;
-}
-
-export type KeyableRsaaReducer<
-  State,
-  RsaaAction extends AnyRsaaActionSet = any
-> =
-  | KeyableRequestReducer<State, RsaaAction>
-  | KeyableSuccessReducer<State, RsaaAction>
-  | KeyableFailureReducer<State, RsaaAction>;
-
-export const createKeyableRequestReducer = <
-  State,
-  ReducerAction extends AnyRsaaActionSet
->(
-  endpoint: ReducerAction['meta']['endpoint'],
-  method: ReducerAction['meta']['method'],
-  reducer: KeyableRequestReducerMethod<State, ReducerAction>
-): KeyableRequestReducer<State, ReducerAction> => ({
-  endpoint,
-  method,
-  reducer,
-  type: RsaaActionType.RSAA_REQUEST
-});
-
-export const createKeyableSuccessReducer = <
-  State,
-  ReducerAction extends AnyRsaaActionSet
->(
-  endpoint: ReducerAction['meta']['endpoint'],
-  method: ReducerAction['meta']['method'],
-  reducer: KeyableSuccessReducerMethod<State, ReducerAction>
-): KeyableSuccessReducer<State, ReducerAction> => ({
-  endpoint,
-  method,
-  reducer,
-  type: RsaaActionType.RSAA_SUCCESS
-});
-
-export const createKeyableFailureReducer = <
-  State,
-  ReducerAction extends AnyRsaaActionSet
->(
-  endpoint: ReducerAction['meta']['endpoint'],
-  method: ReducerAction['meta']['method'],
-  reducer: KeyableFailureReducerMethod<State, ReducerAction>
-): KeyableFailureReducer<State, ReducerAction> => ({
-  endpoint,
-  method,
-  reducer,
-  type: RsaaActionType.RSAA_FAILURE
-});
-
-export const combineKeyableRsaaReducers = <State = never>(
-  defaultState: State
-) => (...keyableReducers: Array<KeyableRsaaReducer<State>>) => (
-  baseState: State = defaultState,
-  action: Action
-): State => {
-  let newState: State = baseState;
-  mapValues(keyableReducers, (reducer: KeyableRsaaReducer<State>) => {
-    if (
-      reducer.type === action.type &&
-      reducer.endpoint === get(action, 'meta.endpoint') &&
-      reducer.method === get(action, 'meta.method')
-    ) {
-      // tslint:disable-next-line:no-object-literal-type-assertion
-      newState = {
-        ...((immer<State, void | State>(baseState, state => {
-          return (reducer.reducer as any)(state, action);
-        }) || {}) as object)
-      } as State;
-      return true;
-    }
-  });
-  return newState;
-};
 
 export type KeyableRsaaActionCreatorFactory<
-  Params,
-  Body extends {
-    endpoint: string;
-    method: HttpMethod;
-    types: [
-      {
-        meta: Params;
-        type: RsaaActionType.RSAA_REQUEST;
-      },
-      {
-        meta: Params;
-        type: RsaaActionType.RSAA_SUCCESS;
-      },
-      {
-        meta: Params;
-        type: RsaaActionType.RSAA_FAILURE;
-      }
-    ];
-    body?:
-      | string
-      | Blob
-      | ArrayBufferView
-      | ArrayBuffer
-      | FormData
-      | URLSearchParams
-      | ReadableStream<Uint8Array>
-      | null
-      | undefined;
-    headers?: RsaaHeaders;
-    options?: RequestInit;
-    credentials?: Credentials;
-    fetch?: typeof fetch;
-  }
-> = (params: Params) => ReduxStandardApiCallingAction<Body>;
+  ExtractorParams,
+  FactoryParams extends BaseRsaaMeta,
+  Body extends KeyableRsaaActionBody<FactoryParams>
+> = (params: ExtractorParams) => ReduxStandardApiCallingAction<Body>;
 
 export const createKeyableRsaaActionCreatorFactory = <
-  Params extends RsaaMeta,
-  Body extends ReduxStandardApiCallingActionBody = ReduxStandardApiCallingActionBody
+  FactoryParams extends BaseRsaaMeta,
+  Body extends KeyableRsaaActionBody<FactoryParams> = KeyableRsaaActionBody<
+    FactoryParams
+  >
 >(
-  mapper: IRsaaCreatorMapper<Params, Body>
+  mapper: IRsaaCreatorMapper<FactoryParams, Body>
 ) => <ExtractorParams = never>(
-  extractor: (params: ExtractorParams) => Params
-): RsaaActionCreatorFactory<ExtractorParams, Body> => params => ({
+  extractor: (params: ExtractorParams) => FactoryParams
+): KeyableRsaaActionCreatorFactory<
+  ExtractorParams,
+  FactoryParams,
+  Body
+> => params => ({
   [RSAA]: mapper(extractor(params))
 });
 
-export const createRsaaActionCreator = createKeyableRsaaActionCreatorFactory<
-  BaseRsaaMeta
->(factoryParams => {
-  const { method, endpoint, params, body } = factoryParams;
-  return {
-    body: JSON.stringify(body),
-    endpoint: `${REACT_APP_API_ROOT}${reduce(
+export const createStandardTypes = <FactoryParams extends BaseRsaaMeta>(
+  factoryParams: FactoryParams
+): KeyableRsaaActionType<FactoryParams> => [
+  {
+    meta: factoryParams,
+    type: RsaaActionType.RSAA_REQUEST
+  },
+  {
+    meta: factoryParams,
+    type: RsaaActionType.RSAA_SUCCESS
+  },
+  {
+    meta: factoryParams,
+    type: RsaaActionType.RSAA_FAILURE
+  }
+];
+
+export const createStandardEndpointReducer = (apiBase: string) => <
+  FactoryParams extends BaseRsaaMeta
+>({
+  params,
+  endpoint
+}: FactoryParams) =>
+  resolveUrl(
+    apiBase,
+    reduce(
       params,
       (result, value, key) => result.replace(`:${key}`, value),
       endpoint
-    )}`,
-    headers: {
-      accept: 'application/json',
-      'content-type': 'application/json'
-    },
-    method,
-    types: [
-      {
-        meta: factoryParams,
-        type: RsaaActionType.RSAA_REQUEST
+    )
+  );
+
+export const createStandardRsaaActionCreator = (apiBase: string) => {
+  const endPointReducer = createStandardEndpointReducer(apiBase);
+  return createKeyableRsaaActionCreatorFactory<BaseRsaaMeta>(factoryParams => {
+    const { method, body } = factoryParams;
+    return {
+      body: JSON.stringify(body),
+      endpoint: endPointReducer(factoryParams),
+      headers: {
+        accept: 'application/json',
+        'content-type': 'application/json'
       },
-      {
-        meta: factoryParams,
-        type: RsaaActionType.RSAA_SUCCESS
-      },
-      {
-        meta: factoryParams,
-        type: RsaaActionType.RSAA_FAILURE
-      }
-    ]
-  };
-});
+      method,
+      types: createStandardTypes(factoryParams)
+    };
+  });
+};

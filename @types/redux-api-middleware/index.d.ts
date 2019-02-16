@@ -130,7 +130,7 @@ declare module 'redux-api-middleware' {
     headers?: RsaaHeaders<State>;
     options?: FetchOptions;
     credentials?: Credentials;
-    fetch?: fetch;
+    fetch?: (input: RequestInfo, init?: RequestInit) => Promise<Response>;
   }
 
   export interface ReduxStandardApiCallingAction<
@@ -140,7 +140,7 @@ declare module 'redux-api-middleware' {
   }
   export interface RsaaMiddlewareOptions {
     ok?: (res: Response) => boolean;
-    fetch?: fetch;
+    fetch?: (input: RequestInfo, init?: RequestInit) => Promise<Response>;
   }
 
   export function isRSAA(action: object): boolean;

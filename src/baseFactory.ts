@@ -5,34 +5,23 @@ export type IRsaaCreatorMapper<
   Body extends ReduxStandardApiCallingActionBody
 > = (p: Params) => Body;
 
-export interface BaseRsaaMeta {
-  method: HttpMethod;
-  endpoint: any;
-  params?: object;
-  body?: object;
-}
-
-export interface BaseRsaaAction {
-  meta: BaseRsaaMeta;
-}
-
 export interface RsaaMeta<Method extends HttpMethod = any, Endpoint = any> {
   endpoint: Endpoint;
   method: Method;
 }
 
 export type RsaaActionCreatorFactory<
-  Params,
+  ExtractorParams,
   Body extends ReduxStandardApiCallingActionBody = ReduxStandardApiCallingActionBody
-> = (params: Params) => ReduxStandardApiCallingAction<Body>;
+> = (params: ExtractorParams) => ReduxStandardApiCallingAction<Body>;
 
 export const createRsaaActionCreatorFactory = <
-  Params extends RsaaMeta,
+  FactoryParams extends RsaaMeta,
   Body extends ReduxStandardApiCallingActionBody = ReduxStandardApiCallingActionBody
 >(
-  mapper: IRsaaCreatorMapper<Params, Body>
+  mapper: IRsaaCreatorMapper<FactoryParams, Body>
 ) => <ExtractorParams = never>(
-  extractor: (params: ExtractorParams) => Params
+  extractor: (params: ExtractorParams) => FactoryParams
 ): RsaaActionCreatorFactory<ExtractorParams, Body> => params => ({
   [RSAA]: mapper(extractor(params))
 });
