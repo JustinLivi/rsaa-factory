@@ -1,0 +1,54 @@
+{
+  "name": "rsaa-factory",
+  "version": "0.1.0",
+  "description": "Typesafe redux standard API action creator factory",
+  "main": "build/index.js",
+  "scripts": {
+    "build": "tsc",
+    "test": "jest",
+    "tslint": "tslint -c tslint.json 'src/**/*.ts'"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JustinLivi/rsaa-factory.git"
+  },
+  "keywords": [
+    "redux",
+    "flux",
+    "react",
+    "api",
+    "middleware",
+    "factory",
+    "creator",
+    "rsaa",
+    "standard",
+    "action",
+    "typescript"
+  ],
+  "author": "Justin Livi",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/JustinLivi/rsaa-factory/issues"
+  },
+  "homepage": "https://github.com/JustinLivi/rsaa-factory#readme",
+  "devDependencies": {
+    "@types/jest": "^24.0.0",
+    "dtslint": "^0.4.2",
+    "jest": "^23.6.0",
+    "jest-extended": "^0.11.1",
+    "prettier": "^1.16.4",
+    "ts-jest": "^23.10.5",
+    "tslint": "^5.12.1",
+    "tslint-config-prettier": "^1.18.0",
+    "tslint-eslint-rules": "^5.4.0",
+    "typescript": "^3.2.4"
+  },
+  "dependencies": {
+    "@types/lodash": "^4.14.121",
+    "@types/redux": "^3.6.0",
+    "immer": "^2.0.0",
+    "lodash": "^4.17.11",
+    "redux": "^4.0.1",
+    "redux-api-middleware": "^3.0.1"
+  }
+}

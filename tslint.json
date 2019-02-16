@@ -1,0 +1,7 @@
+{
+  "extends": ["tslint:latest", "tslint-config-prettier"],
+  "rules": {
+    "no-submodule-imports": [false],
+    "interface-name": [true, "never-prefix"]
+  }
+}
